@@ -11,7 +11,7 @@
 
 char memory[1024];
 char dmemory[1024];
-unsigned int reg[32];
+int reg[32];
 int opcode,rs,rt,rd,shamt,func,immediate;
 unsigned int pcAddress,numOfinstruction,numOfdata;
 unsigned int cycleNum=0;
@@ -46,18 +46,35 @@ void initImemory()
 void printMemOverflow(unsigned int cycle)
 {
     FILE *fp;
-    fp=fopen("/Users/Wu/error_dump.rpt", "w");
-    fprintf(fp, "In cycle %d:Address Overflow\n",cycle);
+    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fprintf(fp, "In cycle %d:Address Overflow\n",cycle+1);
     fclose(fp);
     exit(1);
 }
 
+void print0error(unsigned int cycle)
+{
+    FILE *fp;
+    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fprintf(fp, "In cycle %d:Write $0 Error\n",cycle+1);
+    fclose(fp);
+}
+
+void printMisAligned(unsigned int cycle)
+{
+    FILE *fp;
+    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fprintf(fp, "In cycle %d:Misalignment Error\n",cycle+1);
+    fclose(fp);
+    exit(1);
+}
 unsigned int getInstruction(int address)
 {
+    /*
     if(address<0||address>1020)
     {
         printMemOverflow(cycleNum);
-    }
+    }*/
     return (memory[address]<<24)+((memory[address+1]<<16) & 0xff0000)+((memory[address+2]<<8) & 0xff00)+(memory[address+3] & 0xff);
 }
 
@@ -66,6 +83,9 @@ void putWord(int address,unsigned int value)
     if(address<0||address>1020)
     {
         printMemOverflow(cycleNum);
+    }
+    if(address%4!=0){
+        printMisAligned(cycleNum);
     }
     dmemory[address]=(char)(value>>24);//最高位
     dmemory[address+1]=(char)((value & 0xff0000)>>16);
@@ -81,6 +101,9 @@ unsigned int getWord(int address)
     {
         printMemOverflow(cycleNum);
     }
+    if(address%4!=0){
+        printMisAligned(cycleNum);
+    }
     return (dmemory[address]<<24)+((dmemory[address+1]<<16) & 0xff0000)+((dmemory[address+2]<<8) & 0xff00)+(dmemory[address+3] & 0xff);
 }
 
@@ -89,6 +112,9 @@ void put2Byte(int address,int value)
     if(address<0||address>1022)
     {
         printMemOverflow(cycleNum);
+    }
+    if(address%2!=0){
+        printMisAligned(cycleNum);
     }
     dmemory[address]=(char)((value<<16)>>24);//最高位
     dmemory[address+1]=(char)((value<<24)>>24);
@@ -101,6 +127,9 @@ int get2Byte(int address)
     {
         printMemOverflow(cycleNum);
     }
+    if(address%2!=0){
+        printMisAligned(cycleNum);
+    }
     int rv=((dmemory[address]<<8) & 0xff00)+(dmemory[address+1] & 0xff);
     return (rv<<16)>>16;
 }
@@ -110,6 +139,9 @@ int get2Byteu(int address)
     if(address<0||address>1022)
     {
         printMemOverflow(cycleNum);
+    }
+    if(address%2!=0){
+        printMisAligned(cycleNum);
     }
     return ((dmemory[address]<<8) & 0xff00)+(dmemory[address+1] & 0xff) & 0x0000ffff;
 }
@@ -148,6 +180,16 @@ unsigned int getByteu (int address)
     return n ;
 }
 
+void regSet(int address,int value)
+{
+    if(address==0){
+        print0error(cycleNum);
+        reg[0]=0;
+        return;
+    }
+    reg[address]=value;
+}
+
 void classify(int ins)
 {
     opcode=(ins>>26 & 0x3f);//将数据存入段间寄存器
@@ -169,66 +211,67 @@ void exec()
         case 0://R-Format
             switch (func) {
                 case 0x20:
-                    reg[rd]=reg[rs]+reg[rt];
+                    regSet(rd, reg[rs]+reg[rt]);
                     break;
                 case 0x22:
-                    reg[rd]=reg[rs]-reg[rd];
+                    regSet(rd, reg[rs]-reg[rd]);
                     break;
                 case 0x24:
-                    reg[rd]=reg[rs] & reg[rt];
+                    regSet(rd, reg[rs] & reg[rt]);
                     break;
                 case 0x25:
-                    reg[rd]=reg[rs]|reg[rt];
+                    regSet(rd, reg[rs]|reg[rt]);
                     break;
                 case 0x26:
-                    reg[rd]=reg[rs]^reg[rt];
+                    regSet(rd, reg[rs]^reg[rt]);
                 case 0x27:
-                    reg[rd]=~(reg[rs]|reg[rt]);
+                    regSet(rd, ~(reg[rs]|reg[rt]));
                     break;
                 case 0x28:
-                    reg[rd]=~(reg[rs]&reg[rt]);
+                    regSet(rd, ~(reg[rs]&reg[rt]));
                     break;
                 case 0x2A:
                     if(reg[rs]<reg[rt]){
-                        reg[rd]=1;
+                        regSet(rd, 1);
                     }else{
-                        reg[rd]=0;
+                        regSet(rd, 0);
                     }
                     break;
                 case 0x00:
-                    reg[rd]=reg[rt]<<shamt;
+                    regSet(rd, reg[rt]<<shamt);
                     break;
                 case 0x02:
-                    reg[rd]=(unsigned int)reg[rt]>>shamt;
+                    regSet(rd, (unsigned int)reg[rt]>>shamt);
                     break;
                 case 0x03:
-                    reg[rd]=reg[rt]>>shamt;
+                    regSet(rd, reg[rt]>>shamt);
                     break;
                 case 0x08:
                     pcAddress=reg[rs];
+                    break;
                 default:
                     break;
             }
             break;
         case 0x08:
-            reg[rt]=reg[rs]+immediate;
+            regSet(rt, reg[rs]+immediate);
             break;
         case 0x23:
-            reg[rt]=getWord(reg[rs]+immediate);
+            regSet(rt, getWord(reg[rs]+immediate));
             break;
         case 0x21:
-            reg[rt]=get2Byte(reg[rs]+immediate);
+            regSet(rt, get2Byte(reg[rs]+immediate));
             break;
         case 0x25:
             //lhu
-            reg[rt]=get2Byteu(reg[rs]+immediate);
+            regSet(rt, get2Byteu(reg[rs]+immediate));
             break;
         case 0x20:
-            reg[rt]=getByte(reg[rs]+immediate);
+            regSet(rt, getByte(reg[rs]+immediate));
             break;
         case 0x24:
             //lbu
-            reg[rt]=getByteu(reg[rs]+immediate);
+            regSet(rt, getByteu(reg[rs]+immediate));
             break;
         case 0x2B:
             putWord(reg[rs]+immediate, reg[rt]);
@@ -240,22 +283,22 @@ void exec()
             putByte(reg[rs]+immediate, reg[rt]);
             break;
         case 0x0F:
-            reg[rt]=immediate<<16;
+            regSet(rt, immediate<<16);
             break;
         case 0x0C:
-            reg[rt]=reg[rs] & (unsigned int)immediate;
+            regSet(rt, reg[rs] & (unsigned int)immediate);
             break;
         case 0x0D:
-            reg[rt]=reg[rs] | (unsigned int)immediate;
+            regSet(rt, reg[rs] | (unsigned int)immediate);
             break;
         case 0x0E:
-            reg[rt]=~(reg[rs]|(unsigned int)immediate);
+            regSet(rt, ~(reg[rs]|(unsigned int)immediate));
             break;
         case 0x0A:
             if (reg[rs]<immediate) {
-                reg[rt]=1;
+                regSet(rt, 1);
             }else{
-                reg[rt]=0;
+                regSet(rt, 0);
             }
             break;
         case 0x04:
@@ -272,7 +315,7 @@ void exec()
             pcAddress=((pcAddress) & 0xf0000000) | (immediate*4);
             break;
         case 0x03:
-            reg[31]=pcAddress;
+            regSet(31, pcAddress);
             pcAddress=((pcAddress) & 0xf0000000) | (immediate*4);
             break;
         case 0x3F:
