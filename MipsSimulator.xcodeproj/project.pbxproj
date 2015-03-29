@@ -25,6 +25,7 @@
 /* Begin PBXFileReference section */
 		9472537C1AC692AB00232B02 /* MipsSimulator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MipsSimulator; sourceTree = BUILT_PRODUCTS_DIR; };
 		9472537F1AC692AB00232B02 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		94D089B01AC7E0C400DDF32C /* iimage.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = iimage.bin; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,8 +42,8 @@
 		947253731AC692AB00232B02 = {
 			isa = PBXGroup;
 			children = (
-				9472537E1AC692AB00232B02 /* MipsSimulator */,
 				9472537D1AC692AB00232B02 /* Products */,
+				9472537E1AC692AB00232B02 /* MipsSimulator */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +58,7 @@
 		9472537E1AC692AB00232B02 /* MipsSimulator */ = {
 			isa = PBXGroup;
 			children = (
+				94D089B01AC7E0C400DDF32C /* iimage.bin */,
 				9472537F1AC692AB00232B02 /* main.c */,
 			);
 			path = MipsSimulator;
@@ -232,6 +234,7 @@
 				947253851AC692AB00232B02 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
