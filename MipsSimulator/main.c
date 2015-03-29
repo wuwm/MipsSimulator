@@ -305,6 +305,5 @@ int main(int argc, const char * argv[])
         printReg();
         exec();
     }
-    printReg();
 
 }
