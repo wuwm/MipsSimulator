@@ -22,6 +22,11 @@ void initImemory()
     unsigned char buf[4];
     cycleNum=0;
     FILE *fp;
+    fp=fopen("error_dump.rpt", "w");
+    fclose(fp);
+    fp=fopen("snapshot.rpt", "w");
+    fclose(fp);
+    
     fp=fopen("iimage.bin", "r");
     for(i=0;i<1024;memory[i++]=0);
     for(i=0;i<32;reg[i++]=0);
@@ -47,16 +52,24 @@ void printMemOverflow(unsigned int cycle)
 {
     FILE *fp;
     fp=fopen("error_dump.rpt", "a");
-    fprintf(fp, "In cycle %d:Address Overflow\n",cycle+1);
+    fprintf(fp, "In cycle %d: Address Overflow\n",cycle+1);
     fclose(fp);
     exit(1);
+}
+
+void printNoerror(unsigned int cycle)
+{
+    FILE *fp;
+    fp=fopen("error_dump.rpt", "a");
+    fprintf(fp, "In cycle %d: Number Overflow\n",cycle+1);
+    fclose(fp);
 }
 
 void print0error(unsigned int cycle)
 {
     FILE *fp;
     fp=fopen("error_dump.rpt", "a");
-    fprintf(fp, "In cycle %d:Write $0 Error\n",cycle+1);
+    fprintf(fp, "In cycle %d: Write $0 Error\n",cycle+1);
     fclose(fp);
 }
 
@@ -64,7 +77,7 @@ void printMisAligned(unsigned int cycle)
 {
     FILE *fp;
     fp=fopen("error_dump.rpt", "a");
-    fprintf(fp, "In cycle %d:Misalignment Error\n",cycle+1);
+    fprintf(fp, "In cycle %d: Misalignment Error\n",cycle+1);
     fclose(fp);
     exit(1);
 }
@@ -190,6 +203,15 @@ void regSet(int address,int value)
     reg[address]=value;
 }
 
+int addNum(int addend1,int addend2)
+{
+    int z=addend1+addend2;
+    if((addend1>=0&&addend2>=0&&z<0)||(addend1<0&&addend2<0&&z>=0)){//溢出
+        printNoerror(cycleNum);
+    }
+    return z;
+}
+
 void classify(int ins)
 {
     opcode=(ins>>26 & 0x3f);//将数据存入段间寄存器
@@ -204,18 +226,17 @@ void classify(int ins)
 void exec()
 {
     int instruction;
-    instruction=0x0B3AA190;
-    //instruction=getInstruction(pcAddress);
+    instruction=getInstruction(pcAddress);
     pcAddress+=4;
     classify(instruction);
     switch (opcode) {
         case 0://R-Format
             switch (func) {
                 case 0x20:
-                    regSet(rd, reg[rs]+reg[rt]);
+                    regSet(rd, addNum(reg[rs],reg[rt]));
                     break;
                 case 0x22:
-                    regSet(rd, reg[rs]-reg[rd]);
+                    regSet(rd, addNum(reg[rs],-reg[rd]));
                     break;
                 case 0x24:
                     regSet(rd, reg[rs] & reg[rt]);
@@ -255,33 +276,33 @@ void exec()
             }
             break;
         case 0x08:
-            regSet(rt, reg[rs]+immediate);
+            regSet(rt, addNum(reg[rs],immediate));
             break;
         case 0x23:
-            regSet(rt, getWord(reg[rs]+immediate));
+            regSet(rt, getWord(addNum(reg[rs],immediate)));
             break;
         case 0x21:
-            regSet(rt, get2Byte(reg[rs]+immediate));
+            regSet(rt, get2Byte(addNum(reg[rs],immediate)));
             break;
         case 0x25:
             //lhu
-            regSet(rt, get2Byteu(reg[rs]+immediate));
+            regSet(rt, get2Byteu(addNum(reg[rs],immediate)));
             break;
         case 0x20:
-            regSet(rt, getByte(reg[rs]+immediate));
+            regSet(rt, getByte(addNum(reg[rs],immediate)));
             break;
         case 0x24:
             //lbu
-            regSet(rt, getByteu(reg[rs]+immediate));
+            regSet(rt, getByteu(addNum(reg[rs],immediate)));
             break;
         case 0x2B:
-            putWord(reg[rs]+immediate, reg[rt]);
+            putWord(addNum(reg[rs],immediate), reg[rt]);
             break;
         case 0x29:
-            put2Byte(reg[rs]+immediate, reg[rt]);
+            put2Byte(addNum(reg[rs],immediate), reg[rt]);
             break;
         case 0x28:
-            putByte(reg[rs]+immediate, reg[rt]);
+            putByte(addNum(reg[rs],immediate), reg[rt]);
             break;
         case 0x0F:
             regSet(rt, immediate<<16);//sll右边会自动补0，不存在符号问题，把高16位存入
@@ -305,12 +326,12 @@ void exec()
             break;
         case 0x04:
             if(reg[rs]==reg[rt]){
-                pcAddress+=4*immediate;
+                pcAddress=addNum(pcAddress, 4*immediate);
             }
             break;
         case 0x05:
             if(reg[rs]!=reg[rt]){
-                pcAddress+=4*immediate;
+                pcAddress=addNum(pcAddress, 4*immediate);
             }
             break;
         case 0x02:
