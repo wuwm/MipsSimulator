@@ -116,7 +116,7 @@ void put2Byte(int address,int value)
     if(address%2!=0){
         printMisAligned(cycleNum);
     }
-    dmemory[address]=(char)((value<<16)>>24);//最高位
+    dmemory[address]=(char)((value<<16)>>24);//最高位，这里做法可以精简
     dmemory[address+1]=(char)((value<<24)>>24);
     
 }
@@ -131,7 +131,7 @@ int get2Byte(int address)
         printMisAligned(cycleNum);
     }
     int rv=((dmemory[address]<<8) & 0xff00)+(dmemory[address+1] & 0xff);
-    return (rv<<16)>>16;
+    return (rv<<16)>>16;  //左移加右移可以有符号
 }
 
 int get2Byteu(int address)
@@ -143,7 +143,7 @@ int get2Byteu(int address)
     if(address%2!=0){
         printMisAligned(cycleNum);
     }
-    return ((dmemory[address]<<8) & 0xff00)+(dmemory[address+1] & 0xff) & 0x0000ffff;
+    return ((dmemory[address]<<8) & 0xff00)+(dmemory[address+1] & 0xff) & 0x0000ffff;  //用0x0000ffff消除符号
 }
 
 
@@ -153,7 +153,7 @@ void putByte( int address, int value )
     {
         printMemOverflow(cycleNum);
     }
-    dmemory[address] = (char)(value);
+    dmemory[address] = (char)(value);   //经测试，直接截断
 }
 
 int getByte (int address)
@@ -198,13 +198,14 @@ void classify(int ins)
     rd=(ins>>11 & 0x1f);//5bit
     shamt=(ins>>6 & 0x1f);//5bit
     func=(ins & 0x3f);//6bit
-    immediate=(ins<<16)>>16;//16bit
+    immediate=(ins<<16)>>16;//16bit immediate带符号
 }
 
 void exec()
 {
     int instruction;
-    instruction=getInstruction(pcAddress);
+    instruction=0x0B3AA190;
+    //instruction=getInstruction(pcAddress);
     pcAddress+=4;
     classify(instruction);
     switch (opcode) {
@@ -283,16 +284,17 @@ void exec()
             putByte(reg[rs]+immediate, reg[rt]);
             break;
         case 0x0F:
-            regSet(rt, immediate<<16);
+            regSet(rt, immediate<<16);//sll右边会自动补0，不存在符号问题，把高16位存入
             break;
         case 0x0C:
-            regSet(rt, reg[rs] & (unsigned int)immediate);
+            //这里修改
+            regSet(rt, reg[rs] & (immediate & 0x0000FFFF));
             break;
         case 0x0D:
-            regSet(rt, reg[rs] | (unsigned int)immediate);
+            regSet(rt, reg[rs] | (immediate & 0x0000FFFF));
             break;
         case 0x0E:
-            regSet(rt, ~(reg[rs]|(unsigned int)immediate));
+            regSet(rt, ~(reg[rs] | (immediate & 0x0000FFFF)));
             break;
         case 0x0A:
             if (reg[rs]<immediate) {
@@ -312,11 +314,11 @@ void exec()
             }
             break;
         case 0x02:
-            pcAddress=((pcAddress) & 0xf0000000) | (immediate*4);
+            pcAddress=((pcAddress) & 0xf0000000) | ((immediate & 0x03ffffff)*4);
             break;
         case 0x03:
             regSet(31, pcAddress);
-            pcAddress=((pcAddress) & 0xf0000000) | (immediate*4);
+            pcAddress=((pcAddress) & 0xf0000000) | ((immediate & 0x03ffffff)*4);
             break;
         case 0x3F:
             exit(1);
