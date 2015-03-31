@@ -46,7 +46,7 @@ void initImemory()
 void printMemOverflow(unsigned int cycle)
 {
     FILE *fp;
-    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fp=fopen("error_dump.rpt", "a");
     fprintf(fp, "In cycle %d:Address Overflow\n",cycle+1);
     fclose(fp);
     exit(1);
@@ -55,7 +55,7 @@ void printMemOverflow(unsigned int cycle)
 void print0error(unsigned int cycle)
 {
     FILE *fp;
-    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fp=fopen("error_dump.rpt", "a");
     fprintf(fp, "In cycle %d:Write $0 Error\n",cycle+1);
     fclose(fp);
 }
@@ -63,7 +63,7 @@ void print0error(unsigned int cycle)
 void printMisAligned(unsigned int cycle)
 {
     FILE *fp;
-    fp=fopen("/Users/Wu/error_dump.rpt", "a");
+    fp=fopen("error_dump.rpt", "a");
     fprintf(fp, "In cycle %d:Misalignment Error\n",cycle+1);
     fclose(fp);
     exit(1);
@@ -331,7 +331,7 @@ void printReg()
 {
     int i;
     FILE *fp;
-    fp=fopen("/Users/Wu/snapshot.rpt", "a");
+    fp=fopen("snapshot.rpt", "a");
     fprintf(fp, "%s%d\n","cycle ",cycleNum);
     
     for (i=0; i<32; ++i) {
